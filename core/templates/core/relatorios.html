@@ -1,0 +1,145 @@
+{% extends 'core/base.html' %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card shadow-sm">
+            <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                <h5 class="mb-0 text-primary" style="color: #0A2540 !important;">📊 Histórico e Relatório de Vendas</h5>
+                <div>
+                    <select id="filtro-cliente" class="form-select form-select-sm" onchange="renderizarTabela()">
+                        <option value="todos">Todos os Clientes</option>
+                    </select>
+                </div>
+            </div>
+            <div class="card-body">
+                <table class="table table-hover table-striped">
+                    <thead style="background-color: #f8f9fa;">
+                        <tr>
+                            <th>ID Venda</th>
+                            <th>Data e Hora</th>
+                            <th>Cliente</th>
+                            <th>Nº de Itens</th>
+                            <th>Valor Total</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabela-relatorios">
+                        <tr><td colspan="5" class="text-center">A carregar dados...</td></tr>
+                    </tbody>
+                </table>
+                <div class="text-end mt-3">
+                    <h4 style="color: #FF6D00;">Faturamento Total: <span id="faturamento-total">R$ 0.00</span></h4>
+                </div>
+                <hr class="mt-4">
+                <h5 class="mb-3 text-primary" style="color: #0A2540 !important;">📈 Gráfico de Vendas</h5>
+                <canvas id="graficoVendas" height="100"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    
+    const token = localStorage.getItem('access_token');
+    let vendasGlobais = [];
+    let clientesGlobais = {};
+    let meuGrafico;
+
+    async function carregarDados() {
+        try {
+            // Ir buscar os clientes e as vendas à API
+            const [resClientes, resVendas] = await Promise.all([
+                fetch('/clientes', { headers: { 'Authorization': `Bearer ${token}` } }),
+                fetch('/vendas', { headers: { 'Authorization': `Bearer ${token}` } })
+            ]);
+
+            const clientes = await resClientes.json();
+            vendasGlobais = await resVendas.json();
+
+            // Preencher o dropdown de filtro e mapear IDs para nomes
+            const selectFiltro = document.getElementById('filtro-cliente');
+            clientes.forEach(c => {
+                clientesGlobais[c.id] = c.nome;
+                selectFiltro.innerHTML += `<option value="${c.id}">${c.nome}</option>`;
+            });
+
+            renderizarTabela();
+        } catch (error) {
+            console.error("Erro ao carregar dados:", error);
+            document.getElementById('tabela-relatorios').innerHTML = '<tr><td colspan="5" class="text-danger text-center">Erro ao carregar o relatório.</td></tr>';
+        }
+    }
+
+    function renderizarTabela() {
+        const tbody = document.getElementById('tabela-relatorios');
+        const filtro = document.getElementById('filtro-cliente').value;
+        tbody.innerHTML = '';
+        let faturamento = 0;
+
+        // Filtrar as vendas caso um cliente específico seja selecionado
+        const vendasFiltradas = filtro === 'todos' 
+            ? vendasGlobais 
+            : vendasGlobais.filter(v => v.cliente.toString() === filtro);
+
+        if (vendasFiltradas.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">Nenhuma venda encontrada.</td></tr>';
+            document.getElementById('faturamento-total').innerText = 'R$ 0.00';
+            return;
+        }
+
+        vendasFiltradas.forEach(venda => {
+            const nomeCliente = clientesGlobais[venda.cliente] || 'Cliente Desconhecido';
+            const dataFormatada = new Date(venda.data_venda).toLocaleString('pt-BR');
+            const total = parseFloat(venda.valor_total);
+            const numItens = venda.itens ? venda.itens.length : 0;
+            
+            faturamento += total;
+
+            tbody.innerHTML += `
+                <tr>
+                    <td><strong>#${venda.id}</strong></td>
+                    <td>${dataFormatada}</td>
+                    <td>${nomeCliente}</td>
+                    <td>${numItens} produto(s)</td>
+                    <td class="fw-bold text-success">R$ ${total.toFixed(2)}</td>
+                </tr>
+            `;
+        });
+
+        document.getElementById('faturamento-total').innerText = `R$ ${faturamento.toFixed(2)}`;
+        
+    const vendasPorData = {};
+        vendasFiltradas.forEach(v => {
+            const dataCurta = new Date(v.data_venda).toLocaleDateString('pt-BR');
+            vendasPorData[dataCurta] = (vendasPorData[dataCurta] || 0) + parseFloat(v.valor_total);
+        });
+
+        const labelsGrafico = Object.keys(vendasPorData);
+        const dadosGrafico = Object.values(vendasPorData);
+
+        // Destruir o gráfico anterior se existir (para quando trocar de cliente)
+        if (meuGrafico) { meuGrafico.destroy(); }
+
+        // Desenhar o novo gráfico
+        const ctx = document.getElementById('graficoVendas').getContext('2d');
+        meuGrafico = new Chart(ctx, {
+            type: 'bar', // Tipo barra
+            data: {
+                labels: labelsGrafico,
+                datasets: [{
+                    label: 'Faturamento Diário (R$)',
+                    data: dadosGrafico,
+                    backgroundColor: '#FF6D00',
+                    borderRadius: 4
+                }]
+            },
+            options: { responsive: true }
+        });
+    }
+
+    carregarDados();
+</script>
+{% endblock %}

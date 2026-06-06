@@ -1,0 +1,147 @@
+{% extends 'core/base.html' %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-5">
+        <div class="card shadow-sm mb-3">
+            <div class="card-header bg-white"><h5 class="mb-0">Registar Venda</h5></div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <label class="form-label small text-muted">Cliente</label>
+                    <select id="select-cliente" class="form-select" required>
+                        <option value="">Selecione um cliente...</option>
+                    </select>
+                </div>
+                
+                <hr>
+                
+                <div class="row mb-3">
+                    <div class="col-8">
+                        <label class="form-label small text-muted">Produto</label>
+                        <select id="select-produto" class="form-select">
+                            <option value="">Selecione...</option>
+                        </select>
+                    </div>
+                    <div class="col-4">
+                        <label class="form-label small text-muted">Qtd</label>
+                        <input type="number" id="qtd-produto" class="form-control" value="1" min="1">
+                    </div>
+                </div>
+                <button type="button" class="btn btn-secondary w-100 mb-3" onclick="adicionarAoCarrinho()">Adicionar Produto</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-7">
+        <div class="card shadow-sm">
+            <div class="card-header bg-white"><h5 class="mb-0">Carrinho</h5></div>
+            <div class="card-body">
+                <table class="table table-sm">
+                    <thead><tr><th>Produto</th><th>Qtd</th><th>Subtotal</th><th>Ação</th></tr></thead>
+                    <tbody id="tabela-carrinho">
+                        </tbody>
+                </table>
+                <div class="d-flex justify-content-between align-items-center mt-4">
+                    <h4 class="mb-0" style="color: #0A2540;">Total: <span id="valor-total">R$ 0.00</span></h4>
+                    <button class="btn btn-custom btn-lg" onclick="finalizarVenda()">Finalizar Venda</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    const token = localStorage.getItem('access_token');
+    let carrinho = [];
+    let produtosCache = [];
+
+    // Carregar dropdowns
+    async function inicializarDados() {
+        const reqClientes = await fetch('/clientes', { headers: { 'Authorization': `Bearer ${token}` }});
+        const reqProdutos = await fetch('/produtos', { headers: { 'Authorization': `Bearer ${token}` }});
+        
+        const clientes = await reqClientes.json();
+        produtosCache = await reqProdutos.json();
+
+        const selCliente = document.getElementById('select-cliente');
+        clientes.forEach(c => selCliente.innerHTML += `<option value="${c.id}">${c.nome}</option>`);
+
+        const selProduto = document.getElementById('select-produto');
+        produtosCache.forEach(p => selProduto.innerHTML += `<option value="${p.id}" data-preco="${p.preco}">${p.nome} (R$ ${p.preco})</option>`);
+    }
+
+    function adicionarAoCarrinho() {
+        const selProduto = document.getElementById('select-produto');
+        const id = selProduto.value;
+        const nome = selProduto.options[selProduto.selectedIndex].text.split(' (')[0];
+        const preco = parseFloat(selProduto.options[selProduto.selectedIndex].dataset.preco);
+        const qtd = parseInt(document.getElementById('qtd-produto').value);
+
+        if(!id) return alert('Selecione um produto!');
+
+        carrinho.push({ produto: parseInt(id), nome, preco, quantidade: qtd });
+        atualizarCarrinho();
+    }
+
+    function removerDoCarrinho(index) {
+        carrinho.splice(index, 1);
+        atualizarCarrinho();
+    }
+
+    function atualizarCarrinho() {
+        const tbody = document.getElementById('tabela-carrinho');
+        tbody.innerHTML = '';
+        let total = 0;
+
+        carrinho.forEach((item, index) => {
+            const subtotal = item.preco * item.quantidade;
+            total += subtotal;
+            tbody.innerHTML += `
+                <tr>
+                    <td>${item.nome}</td>
+                    <td>${item.quantidade}</td>
+                    <td>R$ ${subtotal.toFixed(2)}</td>
+                    <td><button class="btn btn-sm btn-danger" onclick="removerDoCarrinho(${index})">X</button></td>
+                </tr>
+            `;
+        });
+        document.getElementById('valor-total').innerText = `R$ ${total.toFixed(2)}`;
+    }
+
+    async function finalizarVenda() {
+        const cliente_id = document.getElementById('select-cliente').value;
+        
+        if(!cliente_id) return alert('Selecione um cliente!');
+        if(carrinho.length === 0) return alert('O carrinho está vazio!');
+
+        // Formato esperado pela API
+        const payload = {
+            cliente: parseInt(cliente_id),
+            itens: carrinho.map(item => ({ produto: item.produto, quantidade: item.quantidade }))
+        };
+
+        const response = await fetch('/vendas', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify(payload)
+        });
+
+        if(response.ok) {
+            alert('Venda registada com sucesso!');
+            carrinho = [];
+            atualizarCarrinho();
+            document.getElementById('select-cliente').value = '';
+        } else {
+            const erro = await response.json();
+            alert('Erro ao registar venda: ' + JSON.stringify(erro));
+        }
+    }
+
+    inicializarDados();
+</script>
+{% endblock %}

@@ -1,0 +1,53 @@
+{% extends 'core/base.html' %}
+
+{% block content %}
+<div class="row text-center mt-5">
+    <div class="col-12">
+        <h1 class="fw-bold" style="color: #0A2540;">Bem-vindo ao SGC - Papelaria Alfa! 📚</h1>
+        <p class="text-muted fs-5 mt-3">O seu sistema de gestão comercial inteligente.</p>
+    </div>
+</div>
+
+<div class="row mt-5">
+    <div class="col-md-3 mb-3">
+        <div class="card shadow-sm text-center border-0 h-100">
+            <div class="card-body">
+                <h1 style="color: #FF6D00;">👥</h1>
+                <h5 class="card-title mt-3" style="color: #0A2540;">Clientes</h5>
+                <p class="card-text text-muted small">Gerencie sua carteira de clientes.</p>
+                <a href="/app/clientes/" class="btn btn-outline-secondary w-100 mt-2">Acessar</a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-3">
+        <div class="card shadow-sm text-center border-0 h-100">
+            <div class="card-body">
+                <h1 style="color: #FF6D00;">📦</h1>
+                <h5 class="card-title mt-3" style="color: #0A2540;">Produtos</h5>
+                <p class="card-text text-muted small">Controle seu estoque e preços.</p>
+                <a href="/app/produtos/" class="btn btn-outline-secondary w-100 mt-2">Acessar</a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-3">
+        <div class="card shadow-sm text-center border-0 h-100">
+            <div class="card-body">
+                <h1 style="color: #FF6D00;">🛒</h1>
+                <h5 class="card-title mt-3" style="color: #0A2540;">Vendas</h5>
+                <p class="card-text text-muted small">Frente de caixa e carrinho.</p>
+                <a href="/app/vendas/" class="btn btn-outline-secondary w-100 mt-2">Acessar</a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-3">
+        <div class="card shadow-sm text-center border-0 h-100">
+            <div class="card-body">
+                <h1 style="color: #FF6D00;">📊</h1>
+                <h5 class="card-title mt-3" style="color: #0A2540;">Relatórios</h5>
+                <p class="card-text text-muted small">Acompanhe seu faturamento.</p>
+                <a href="/app/relatorios/" class="btn btn-outline-secondary w-100 mt-2">Acessar</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
